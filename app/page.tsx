@@ -7,22 +7,56 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { supabase } from "@/lib/supabase";
 import { BookOpen, Calendar, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+type Post = {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  users: {
+    nickname: string;
+  };
+};
+
 export default function HomePage() {
-  const [posts, setPosts] = useState<any>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const getPosts = async () => {
+    const { data, error } = await supabase.from("posts").select(`
+    id,
+    title,
+    content,
+    created_at,
+    updated_at,
+    users (nickname)
+  `);
+    if (error) {
+      console.error(error);
+    } else {
+      setPosts(data as unknown as Post[]);
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    supabase
-      .from("posts")
-      .select("*")
-      .then(({ data }) => {
-        setPosts(data);
-      });
+    getPosts();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner className="size-16" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +104,7 @@ export default function HomePage() {
       {/* Posts Grid */}
       <main className="container mx-auto px-4 py-12">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {posts.map((post: any) => (
+          {posts.map((post: Post) => (
             <Link key={post.id} href={`/posts/${post.id}`}>
               <Card className="h-full transition-all hover:shadow-lg hover:border-primary/50">
                 <CardHeader>
@@ -86,7 +120,7 @@ export default function HomePage() {
                 <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <User className="h-3 w-3" />
-                    {post.user_id}
+                    {post.users.nickname}
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
