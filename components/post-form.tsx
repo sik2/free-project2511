@@ -12,13 +12,13 @@ import { supabase } from '@/lib/supabase'
 interface PostFormProps {
   initialData?: {
     title: string
-    category: string
     content: string
   }
   isEdit?: boolean
+  postId?: number
 }
 
-export function PostForm({ initialData, isEdit }: PostFormProps) {
+export function PostForm({ initialData, isEdit, postId }: PostFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(initialData?.title || '')
   const [content, setContent] = useState(initialData?.content || '')
@@ -38,26 +38,47 @@ export function PostForm({ initialData, isEdit }: PostFormProps) {
         return
       }
 
-      // Insert post into database
-      const { data, error } = await supabase
-        .from('posts')
-        .insert([
-          {
+      if (isEdit && postId) {
+        // Update existing post
+        const { error } = await supabase
+          .from('posts')
+          .update({
             title,
             content,
-            user_id: user.id,
-          }
-        ])
-        .select()
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', postId)
 
-      if (error) {
-        console.error('Error saving post:', error)
-        alert('게시글 저장에 실패했습니다.')
-        return
+        if (error) {
+          console.error('Error updating post:', error)
+          alert('게시글 수정에 실패했습니다.')
+          return
+        }
+
+        console.log('Post updated successfully')
+        router.push(`/posts/${postId}`)
+      } else {
+        // Insert new post
+        const { data, error } = await supabase
+          .from('posts')
+          .insert([
+            {
+              title,
+              content,
+              user_id: user.id,
+            }
+          ])
+          .select()
+
+        if (error) {
+          console.error('Error saving post:', error)
+          alert('게시글 저장에 실패했습니다.')
+          return
+        }
+
+        console.log('Post saved successfully:', data)
+        router.push('/')
       }
-
-      console.log('Post saved successfully:', data)
-      router.push('/')
     } catch (error) {
       console.error('Unexpected error:', error)
       alert('예상치 못한 오류가 발생했습니다.')
