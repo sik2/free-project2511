@@ -19,15 +19,12 @@ type Post = {
   content: string;
   created_at: string;
   updated_at: string;
-  users: {
-    nickname: string;
-  };
 };
 
 export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
   const getPosts = async () => {
     const { data, error } = await supabase.from("posts").select(`
@@ -35,19 +32,29 @@ export default function HomePage() {
     title,
     content,
     created_at,
-    updated_at,
-    users (nickname)
+    updated_at
   `);
     if (error) {
       console.error(error);
     } else {
-      setPosts(data as unknown as Post[]);
+      setPosts(data as Post[]);
       setIsLoading(false);
     }
   };
 
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user ?? null);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   useEffect(() => {
     getPosts();
+    checkUser();
   }, []);
 
   if (isLoading) {
@@ -73,14 +80,22 @@ export default function HomePage() {
                 글쓰기
               </Button>
             </Link>
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                로그인
+            {user ? (
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                로그아웃
               </Button>
-            </Link>
-            <Link href="/signup">
-              <Button size="sm">회원가입</Button>
-            </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" size="sm">
+                    로그인
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="sm">회원가입</Button>
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -118,10 +133,6 @@ export default function HomePage() {
                   </p>
                 </CardContent>
                 <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    {post.users.nickname}
-                  </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     {new Date(post.created_at).toLocaleDateString()}
