@@ -7,13 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { supabase } from '@/lib/supabase'
 
 interface PostFormProps {
   initialData?: {
@@ -27,14 +21,49 @@ interface PostFormProps {
 export function PostForm({ initialData, isEdit }: PostFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(initialData?.title || '')
-  const [category, setCategory] = useState(initialData?.category || '')
   const [content, setContent] = useState(initialData?.content || '')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Handle form submission
-    console.log({ title, category, content })
-    router.push('/')
+    setIsSubmitting(true)
+
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        alert('로그인이 필요합니다.')
+        router.push('/login')
+        return
+      }
+
+      // Insert post into database
+      const { data, error } = await supabase
+        .from('posts')
+        .insert([
+          {
+            title,
+            content,
+            user_id: user.id,
+          }
+        ])
+        .select()
+
+      if (error) {
+        console.error('Error saving post:', error)
+        alert('게시글 저장에 실패했습니다.')
+        return
+      }
+
+      console.log('Post saved successfully:', data)
+      router.push('/')
+    } catch (error) {
+      console.error('Unexpected error:', error)
+      alert('예상치 못한 오류가 발생했습니다.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
@@ -57,22 +86,6 @@ export function PostForm({ initialData, isEdit }: PostFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">카테고리</Label>
-            <Select value={category} onValueChange={setCategory} required>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="카테고리를 선택하세요" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="개발">개발</SelectItem>
-                <SelectItem value="React">React</SelectItem>
-                <SelectItem value="TypeScript">TypeScript</SelectItem>
-                <SelectItem value="디자인">디자인</SelectItem>
-                <SelectItem value="트렌드">트렌드</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="content">내용</Label>
             <Textarea
               id="content"
@@ -88,8 +101,8 @@ export function PostForm({ initialData, isEdit }: PostFormProps) {
             <Button type="button" variant="outline" onClick={handleCancel}>
               취소
             </Button>
-            <Button type="submit">
-              {isEdit ? '수정하기' : '작성하기'}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? '저장 중...' : (isEdit ? '수정하기' : '작성하기')}
             </Button>
           </div>
         </form>
