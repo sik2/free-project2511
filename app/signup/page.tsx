@@ -7,20 +7,39 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BookOpen } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordError, setPasswordError] = useState('')
 
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setEmail(value)
+  }
+
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setConfirmPassword(value)
-    
+
     if (value && password !== value) {
       setPasswordError('비밀번호가 일치하지 않습니다')
     } else {
       setPasswordError('')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+    if (error) {
+      console.error(error)
     }
   }
 
@@ -41,18 +60,19 @@ export default function SignupPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">아이디</Label>
-              <Input 
-                id="username" 
-                type="text" 
-                placeholder="아이디를 입력하세요"
+              <Label htmlFor="email">이메일</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="이메일을 입력하세요"
+                onChange={handleEmailChange}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">비밀번호</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Input
+                id="password"
+                type="password"
                 placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -60,9 +80,9 @@ export default function SignupPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">비밀번호 확인</Label>
-              <Input 
-                id="confirm-password" 
-                type="password" 
+              <Input
+                id="confirm-password"
+                type="password"
                 placeholder="비밀번호를 다시 입력하세요"
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
@@ -73,10 +93,11 @@ export default function SignupPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               size="lg"
               disabled={!password || !confirmPassword || password !== confirmPassword}
+              onClick={handleSubmit}
             >
               회원가입
             </Button>
