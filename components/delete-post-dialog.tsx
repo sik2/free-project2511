@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Trash2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface DeletePostDialogProps {
   postId: number
@@ -21,13 +22,35 @@ interface DeletePostDialogProps {
 export function DeletePostDialog({ postId }: DeletePostDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleDelete = () => {
-    // TODO: Handle post deletion
-    console.log('Deleting post:', postId)
-    setOpen(false)
-    router.push('/')
+  const handleDelete = async () => {
+    setIsDeleting(true)
+
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId)
+
+      if (error) {
+        console.error('Error deleting post:', error)
+        alert('게시글 삭제에 실패했습니다.')
+        setIsDeleting(false)
+        return
+      }
+
+      // Successfully deleted
+      setOpen(false)
+      router.push('/')
+      router.refresh()
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      alert('예상치 못한 오류가 발생했습니다.')
+      setIsDeleting(false)
+    }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -45,11 +68,11 @@ export function DeletePostDialog({ postId }: DeletePostDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isDeleting}>
             취소
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            삭제하기
+          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? '삭제 중...' : '삭제하기'}
           </Button>
         </DialogFooter>
       </DialogContent>
